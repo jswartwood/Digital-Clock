@@ -1,3 +1,9 @@
+/*
+ * Digital Clock
+ *
+ * Copyright (c) 2011 Jacob Swartwood
+ */
+
 int element[7] = { 2, 3, 4, 5, 6, 7, 8 };
 
 int digit[4] = { 10, 11, 12, 13 };
