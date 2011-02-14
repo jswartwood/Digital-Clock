@@ -4,9 +4,11 @@
  * Copyright (c) 2011 Jacob Swartwood
  */
 
+boolean DEBUG_MODE = true;
+
 int ELEMENT[7] = { 2, 3, 4, 5, 6, 7, 8 };
 
-int DIGIT[4] = { 10, 11, 12, 13 };
+int DIGIT[4] = { A5, A4, A3, A2 };
 
 int NUM[10][7] = {
 	{ LOW, LOW, LOW, LOW, LOW, LOW, HIGH },
@@ -21,14 +23,18 @@ int NUM[10][7] = {
 	{ LOW, LOW, LOW, HIGH, HIGH, LOW, LOW },
 };
 
-int PM = 9;
+int PM = A1;
+int ALARM_R = 11;
+int ALARM_G = 10;
 
-unsigned long set_time = 0;
+unsigned long HRS_24 = 86400;
+unsigned int ALARM_TIMER = 3600;
+
 long offset = 0;
+long alarm = -1;
 
 unsigned long start_time = millis();
 unsigned long time = millis();
-unsigned long HRS_24 = 86400;
 
 int hours;
 int minutes;
@@ -46,6 +52,8 @@ void setup() {
 	}
 	
 	pinMode(PM, OUTPUT);
+	pinMode(ALARM_R, OUTPUT);
+	pinMode(ALARM_G, OUTPUT);
 	
 	Serial.begin(9600);
 }
@@ -70,16 +78,41 @@ void loop() {
 	time %= HRS_24;
 	
 	if (Serial.available() > 0) {
+		char set_what = Serial.read();
 		long d1 = long(Serial.read() - 48);
 		long d2 = long(Serial.read() - 48);
 		long d3 = long(Serial.read() - 48);
 		long d4 = long(Serial.read() - 48);
-		
-		set_time = (d1 * 10 + d2) * 3600;
-		set_time += (d3 * 10 + d4) * 60;
 		Serial.flush();
 		
-		offset = set_time - time;
+		if ((d1 >= 0) && (d2 >= 0) && (d3 >= 0) && (d4 >= 0)) {
+			unsigned long set_time = (d1 * 10 + d2) * 3600;
+			set_time += (d3 * 10 + d4) * 60;
+			
+			if (set_what == 'a' || set_what == 'A') {
+				alarm = set_time;
+				
+				if (DEBUG_MODE) {
+					Serial.print("Setting alarm: ");
+					Serial.print(d1);
+					Serial.print(d2);
+					Serial.print(":");
+					Serial.print(d3);
+					Serial.println(d4);
+				}
+			} else {
+				offset = set_time - time;
+				
+				if (DEBUG_MODE) {
+					Serial.print("Setting time: ");
+					Serial.print(d1);
+					Serial.print(d2);
+					Serial.print(":");
+					Serial.print(d3);
+					Serial.println(d4);
+				}
+			}
+		}
 	}
 	
 	time += offset;
@@ -93,19 +126,36 @@ void loop() {
 		hours = 12;
 	}
 	
-	if (seconds != last_seconds) {
-		last_seconds = seconds;
-		Serial.print(hours);
-		Serial.print(":");
-		Serial.print(minutes);
-		Serial.print(":");
-		Serial.print(seconds);
-		Serial.println(pm ? " pm" : " am");
-	}
-	
 	writeDigit(0, hours / 10);
 	writeDigit(1, hours % 10);
 	writeDigit(2, minutes / 10);
 	writeDigit(3, minutes % 10);
 	digitalWrite(PM, pm ? HIGH : LOW);
+	
+	if ((alarm > 0) && (time >= alarm) && (time < (alarm + ALARM_TIMER))) {
+		int alarm_bright = (time - alarm) * 256 / ALARM_TIMER;
+		analogWrite(ALARM_R, alarm_bright);
+		analogWrite(ALARM_G, alarm_bright / 3);
+		
+		if (DEBUG_MODE && (seconds != last_seconds)) {
+			Serial.print("Brightness: ");
+			Serial.println(alarm_bright);
+		}
+	} else {
+		analogWrite(ALARM_R, 0);
+		analogWrite(ALARM_G, 0);
+	}
+	
+	if (seconds != last_seconds) {
+		last_seconds = seconds;
+		
+		if (DEBUG_MODE) {
+			Serial.print(hours);
+			Serial.print(":");
+			Serial.print(minutes);
+			Serial.print(":");
+			Serial.print(seconds);
+			Serial.println(pm ? " pm" : " am");
+		}
+	}
 }
