@@ -20,12 +20,13 @@ int NUM[10][7] = {
 	{ LOW, HIGH, LOW, LOW, LOW, LOW, LOW },
 	{ LOW, LOW, LOW, HIGH, HIGH, HIGH, HIGH },
 	{ LOW, LOW, LOW, LOW, LOW, LOW, LOW },
-	{ LOW, LOW, LOW, HIGH, HIGH, LOW, LOW },
+	{ LOW, LOW, LOW, HIGH, HIGH, LOW, LOW }
 };
 
 int PM = A1;
-int ALARM_R = 11;
+int ALARM_R = 9;
 int ALARM_G = 10;
+int ALARM_B = 11;
 
 unsigned long HRS_24 = 86400;
 unsigned int ALARM_TIMER = 3600;
@@ -52,8 +53,10 @@ void setup() {
 	}
 	
 	pinMode(PM, OUTPUT);
+
 	pinMode(ALARM_R, OUTPUT);
 	pinMode(ALARM_G, OUTPUT);
+	pinMode(ALARM_B, OUTPUT);
 	
 	Serial.begin(9600);
 }
@@ -89,33 +92,40 @@ void loop() {
 			unsigned long set_time = (d1 * 10 + d2) * 3600;
 			set_time += (d3 * 10 + d4) * 60;
 			
-			if (set_what == 'a' || set_what == 'A') {
-				alarm = set_time;
+			switch (set_what) {
+				case 'a':
+				case 'A':
+					alarm = set_time;
 				
-				if (DEBUG_MODE) {
-					Serial.print("Setting alarm: ");
-					Serial.print(d1);
-					Serial.print(d2);
-					Serial.print(":");
-					Serial.print(d3);
-					Serial.println(d4);
-				}
-			} else {
-				offset = set_time - time;
+					if (DEBUG_MODE) {
+						Serial.print("Setting alarm: ");
+						Serial.print(d1);
+						Serial.print(d2);
+						Serial.print(":");
+						Serial.print(d3);
+						Serial.println(d4);
+					}
+					break;
+				case 't':
+				case 'T':
+					offset = set_time - time;
 				
-				if (DEBUG_MODE) {
-					Serial.print("Setting time: ");
-					Serial.print(d1);
-					Serial.print(d2);
-					Serial.print(":");
-					Serial.print(d3);
-					Serial.println(d4);
-				}
+					if (DEBUG_MODE) {
+						Serial.print("Setting time: ");
+						Serial.print(d1);
+						Serial.print(d2);
+						Serial.print(":");
+						Serial.print(d3);
+						Serial.println(d4);
+					}
+					break;
 			}
 		}
 	}
 	
 	time += offset;
+	time %= HRS_24;
+	
 	seconds = time % 60;
 	hours = time / 3600;
 	minutes = (time / 60) % 60;
@@ -136,6 +146,7 @@ void loop() {
 		int alarm_bright = (time - alarm) * 256 / ALARM_TIMER;
 		analogWrite(ALARM_R, alarm_bright);
 		analogWrite(ALARM_G, alarm_bright / 3);
+		analogWrite(ALARM_B, alarm_bright / 8);
 		
 		if (DEBUG_MODE && (seconds != last_seconds)) {
 			Serial.print("Brightness: ");
@@ -144,6 +155,7 @@ void loop() {
 	} else {
 		analogWrite(ALARM_R, 0);
 		analogWrite(ALARM_G, 0);
+		analogWrite(ALARM_B, 0);
 	}
 	
 	if (seconds != last_seconds) {
